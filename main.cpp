@@ -7,19 +7,27 @@
  *  pthread tutorial: http://www.cs.cmu.edu/afs/cs/academic/class/15492-f07/www/pthreads.html
  */
 
-
 #include <vector>
 #include <iostream>
 #include <stdlib.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <math.h>
 
 using namespace std;
 
 #define DEFAULT_THREAD_ATTRIBUTES NULL
 #define BUFFER_SIZE 5
+#define MAX_THREADS 8
 
-typedef int buffer_item;
+typedef long buffer_item;
+
+struct CommandLineOptions
+{
+    int sleepTimeSeconds = 0;
+    int consumerThreads = 1;
+    int producerThreads = 1;
+};
 
 void *producer(void * params);
 void *consumer(void * params);
@@ -29,21 +37,26 @@ CommandLineOptions commandLineOptions(int argc, char **argv);
 void init(vector<pthread_t> &threads, int threadCount);
 int createThreads(vector<pthread_t> & threads, const pthread_attr_t *attr, void *(*start_routine)(void *), void *arg);
 
+int getSleepTime();
 //Globals
 buffer_item buffer[BUFFER_SIZE];
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 int index = 0;
+pthread_cond_t cond;
 
-struct CommandLineOptions
+void * justPrint(void * args)
 {
-    int sleepTimeSeconds = 0;
-    int consumerThreads = 1;
-    int producerThreads = 1;
-};
+    cout << "Other thread started" << endl;
+    sleep(2);
+}
 
 int main(int argc, char ** argv)
 {
     CommandLineOptions options = commandLineOptions(argc, argv);
+
+    //Avoid massacring the poor CPU
+    if((options.producerThreads + options.consumerThreads) > MAX_THREADS)
+        options.consumerThreads = options.producerThreads = MAX_THREADS / 2;
 
     vector<pthread_t> producers(options.producerThreads);
     vector<pthread_t> consumers(options.consumerThreads);
@@ -55,7 +68,6 @@ int main(int argc, char ** argv)
     createThreads(consumers, DEFAULT_THREAD_ATTRIBUTES, consumer, nullptr);
 
     sleep(options.sleepTimeSeconds);
-
     exit(EXIT_SUCCESS);
 }
 
@@ -95,6 +107,7 @@ CommandLineOptions commandLineOptions(int argc, char **argv)
             options.producerThreads = stoi(argv[4]);
         case 3:
             options.sleepTimeSeconds = stoi(argv[2]);
+            break;
         default:
             cout << "Invalid command line arguments" << endl;
     }
@@ -104,12 +117,43 @@ CommandLineOptions commandLineOptions(int argc, char **argv)
 
 void *producer(void * params)
 {
-    
+    pthread_mutex_lock(&lock);
+
+    while(index >= BUFFER_SIZE)
+        pthread_cond_wait(&cond, &lock);
+
+    buffer_item randomVal = random();
+    insert_item(randomVal);
+    cout << "Producer: Inserting " << randomVal << endl;
+
+    pthread_cond_signal(&cond);
+    pthread_mutex_unlock(&lock);
+
+    int sleepTime = getSleepTime();
+    cout << "Producer: Sleeping for: " << sleepTime << endl;
+    sleep(sleepTime);
 }
 
 void *consumer(void * params)
 {
+    pthread_mutex_lock(&lock);
 
+    while(index <= 0)
+        pthread_cond_wait(&cond, &lock);
+
+    buffer_item removedItem = remove_item();
+    cout << "Consumer: Removed " << removedItem << endl;
+    pthread_cond_signal(&cond);
+    pthread_mutex_unlock(&lock);
+
+    int sleepTime = getSleepTime();
+    cout << "Consumer: Sleeping for: " << sleepTime << endl;
+    sleep(sleepTime);
+}
+
+int getSleepTime()
+{
+    return (rand() % 10) + 1;
 }
 
 int insert_item(buffer_item &item)
