@@ -12,67 +12,119 @@
 #include <iostream>
 #include <stdlib.h>
 #include <pthread.h>
+#include <unistd.h>
 
 using namespace std;
 
 #define DEFAULT_THREAD_ATTRIBUTES NULL
+#define BUFFER_SIZE 5
+
+typedef int buffer_item;
 
 void *producer(void * params);
 void *consumer(void * params);
-void initBuffer(vector<int> &buffer);
+int insert_item(buffer_item &item);
+int remove_item();
+CommandLineOptions commandLineOptions(int argc, char **argv);
+void init(vector<pthread_t> &threads, int threadCount);
+int createThreads(vector<pthread_t> & threads, const pthread_attr_t *attr, void *(*start_routine)(void *), void *arg);
 
-vector<int> buffer;
-pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-int counter = 0;
-int producerIndex = 0;
-int consumerIndex = 0;
-bool go = false;
+//Globals
+buffer_item buffer[BUFFER_SIZE];
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+int index = 0;
 
-int main()
+struct CommandLineOptions
 {
-    pthread_t producerThread, consumerThread;
+    int sleepTimeSeconds = 0;
+    int consumerThreads = 1;
+    int producerThreads = 1;
+};
 
-    //Create the producer and consumer threads
-    pthread_create(&producerThread, DEFAULT_THREAD_ATTRIBUTES, producer, NULL);
-    pthread_create(&consumerThread, DEFAULT_THREAD_ATTRIBUTES, consumer, NULL);
+int main(int argc, char ** argv)
+{
+    CommandLineOptions options = commandLineOptions(argc, argv);
 
-    pthread_join(producerThread, NULL);
-    pthread_join(consumerThread, NULL);
+    vector<pthread_t> producers(options.producerThreads);
+    vector<pthread_t> consumers(options.consumerThreads);
+
+    init(producers, options.producerThreads);
+    init(consumers, options.consumerThreads);
+
+    createThreads(producers, DEFAULT_THREAD_ATTRIBUTES, producer, nullptr);
+    createThreads(consumers, DEFAULT_THREAD_ATTRIBUTES, consumer, nullptr);
+
+    sleep(options.sleepTimeSeconds);
 
     exit(EXIT_SUCCESS);
 }
 
+void init(vector<pthread_t> &threads, int threadCount)
+{
+    for(int count = 0; count < threadCount; ++count)
+    {
+        pthread_t thread;
+        threads.push_back(thread);
+    }
+}
+
+int createThreads(vector<pthread_t> & threads, const pthread_attr_t *attr, void *(*start_routine)(void *), void *arg)
+{
+    for(pthread_t thread : threads)
+        pthread_create(&thread, attr, start_routine, arg);
+}
+
+/*
+ * 3 options:
+ * 1) How long to sleep for
+ * 2) The number of producer threads
+ * 3) The number of consumer threads
+ *
+ * <prog_name> -s <x> -pt <x1> -ct <x2> [last two optional]
+ */
+
+CommandLineOptions commandLineOptions(int argc, char **argv)
+{
+    CommandLineOptions options;
+
+    switch(argc)
+    {
+        case 7:
+            options.consumerThreads = stoi(argv[6]);
+        case 5:
+            options.producerThreads = stoi(argv[4]);
+        case 3:
+            options.sleepTimeSeconds = stoi(argv[2]);
+        default:
+            cout << "Invalid command line arguments" << endl;
+    }
+
+    return options;
+}
 
 void *producer(void * params)
 {
-   while(producerIndex < 100)
-   {
-       while(go);
-       pthread_mutex_lock(&lock);
-       buffer.push_back(counter);
-       counter++;
-       producerIndex++;
-       cout << "Producer: Counter value: " << counter << endl;
-       pthread_mutex_unlock(&lock);
-   }
-
-    go = true;
-
+    
 }
 
 void *consumer(void * params)
 {
-    consumerIndex = 99;
 
-    while(consumerIndex > -1)
-    {
-        while(!go);
-        pthread_mutex_lock(&lock);
-        int erasedVal = buffer[consumerIndex];
-        buffer.erase(buffer.begin() + consumerIndex);
-        consumerIndex--;
-        cout << "Consumer: Erased value: " << erasedVal << endl;
-        pthread_mutex_unlock(&lock);
-    }
 }
 
+int insert_item(buffer_item &item)
+{
+    if(index >= BUFFER_SIZE)
+        index = 0;
+
+    buffer[index] = item;
+    ++index;
+}
+
+int remove_item()
+{
+    if(index <= 0)
+        index = BUFFER_SIZE - 1;
+    else
+        index--;
+}
