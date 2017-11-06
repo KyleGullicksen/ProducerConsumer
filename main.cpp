@@ -15,7 +15,6 @@
 #include <math.h>
 
 using namespace std;
-
 #define DEFAULT_THREAD_ATTRIBUTES NULL
 #define BUFFER_SIZE 5
 #define MAX_THREADS 8
@@ -28,29 +27,28 @@ struct CommandLineOptions
     int consumerThreads = 1;
     int producerThreads = 1;
 };
-
-void *producer(void * params);
-void *consumer(void * params);
-int insert_item(buffer_item &item);
+void* producer(void* params);
+void* consumer(void* params);
+int insert_item(buffer_item& item);
 int remove_item();
-CommandLineOptions commandLineOptions(int argc, char **argv);
-void init(vector<pthread_t> &threads, int threadCount);
-int createThreads(vector<pthread_t> & threads, const pthread_attr_t *attr, void *(*start_routine)(void *), void *arg);
-
+CommandLineOptions commandLineOptions(int argc, char** argv);
+void init(vector<pthread_t>& threads, int threadCount);
+int createThreads(vector<pthread_t>& threads, const pthread_attr_t* attr, void* (* start_routine)(void*), void* arg);
 int getSleepTime();
+
 //Globals
 buffer_item buffer[BUFFER_SIZE];
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 int index = 0;
 pthread_cond_t cond;
 
-void * justPrint(void * args)
+void* justPrint(void* args)
 {
     cout << "Other thread started" << endl;
     sleep(2);
 }
 
-int main(int argc, char ** argv)
+int main(int argc, char** argv)
 {
     CommandLineOptions options = commandLineOptions(argc, argv);
 
@@ -71,7 +69,7 @@ int main(int argc, char ** argv)
     exit(EXIT_SUCCESS);
 }
 
-void init(vector<pthread_t> &threads, int threadCount)
+void init(vector<pthread_t>& threads, int threadCount)
 {
     for(int count = 0; count < threadCount; ++count)
     {
@@ -80,7 +78,7 @@ void init(vector<pthread_t> &threads, int threadCount)
     }
 }
 
-int createThreads(vector<pthread_t> & threads, const pthread_attr_t *attr, void *(*start_routine)(void *), void *arg)
+int createThreads(vector<pthread_t>& threads, const pthread_attr_t* attr, void* (* start_routine)(void*), void* arg)
 {
     for(pthread_t thread : threads)
         pthread_create(&thread, attr, start_routine, arg);
@@ -95,10 +93,9 @@ int createThreads(vector<pthread_t> & threads, const pthread_attr_t *attr, void 
  * <prog_name> -s <x> -pt <x1> -ct <x2> [last two optional]
  */
 
-CommandLineOptions commandLineOptions(int argc, char **argv)
+CommandLineOptions commandLineOptions(int argc, char** argv)
 {
     CommandLineOptions options;
-
     switch(argc)
     {
         case 7:
@@ -111,14 +108,12 @@ CommandLineOptions commandLineOptions(int argc, char **argv)
         default:
             cout << "Invalid command line arguments" << endl;
     }
-
     return options;
 }
 
-void *producer(void * params)
+void* producer(void* params)
 {
     pthread_mutex_lock(&lock);
-
     while(index >= BUFFER_SIZE)
         pthread_cond_wait(&cond, &lock);
 
@@ -134,18 +129,18 @@ void *producer(void * params)
     sleep(sleepTime);
 }
 
-void *consumer(void * params)
+void* consumer(void* params)
 {
     pthread_mutex_lock(&lock);
-
     while(index <= 0)
         pthread_cond_wait(&cond, &lock);
 
     buffer_item removedItem = remove_item();
     cout << "Consumer: Removed " << removedItem << endl;
+
     pthread_cond_signal(&cond);
     pthread_mutex_unlock(&lock);
-
+    
     int sleepTime = getSleepTime();
     cout << "Consumer: Sleeping for: " << sleepTime << endl;
     sleep(sleepTime);
@@ -156,11 +151,10 @@ int getSleepTime()
     return (rand() % 10) + 1;
 }
 
-int insert_item(buffer_item &item)
+int insert_item(buffer_item& item)
 {
     if(index >= BUFFER_SIZE)
         index = 0;
-
     buffer[index] = item;
     ++index;
 }
