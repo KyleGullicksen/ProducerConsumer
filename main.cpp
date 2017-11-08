@@ -30,7 +30,7 @@ struct CommandLineOptions
 void* producer(void* params);
 void* consumer(void* params);
 int insert_item(buffer_item& item);
-int remove_item();
+buffer_item remove_item();
 CommandLineOptions commandLineOptions(int argc, char** argv);
 void init(vector<pthread_t>& threads, int threadCount);
 int createThreads(vector<pthread_t>& threads, const pthread_attr_t* attr, void* (* start_routine)(void*), void* arg);
@@ -162,10 +162,13 @@ int insert_item(buffer_item& item)
     ++index;
 }
 
-int remove_item()
+buffer_item remove_item()
 {
     if(index <= 0)
         index = BUFFER_SIZE - 1;
     else
         index--;
+
+    buffer_item item = buffer[index];
+    return item;
 }
