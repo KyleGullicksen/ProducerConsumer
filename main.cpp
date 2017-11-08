@@ -40,7 +40,8 @@ int getSleepTime();
 buffer_item buffer[BUFFER_SIZE];
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 int index = 0;
-pthread_cond_t cond;
+pthread_cond_t producerConditional;
+pthread_cond_t consumerConditional;
 
 void* justPrint(void* args)
 {
@@ -111,17 +112,19 @@ CommandLineOptions commandLineOptions(int argc, char** argv)
     return options;
 }
 
+//Use different conditionls
+
 void* producer(void* params)
 {
     pthread_mutex_lock(&lock);
     while(index >= BUFFER_SIZE)
-        pthread_cond_wait(&cond, &lock);
+        pthread_cond_wait(&producerConditional, &lock);
 
     buffer_item randomVal = random();
     insert_item(randomVal);
     cout << "Producer: Inserting " << randomVal << endl;
 
-    pthread_cond_signal(&cond);
+    pthread_cond_signal(&consumerConditional);
     pthread_mutex_unlock(&lock);
 
     int sleepTime = getSleepTime();
@@ -133,14 +136,14 @@ void* consumer(void* params)
 {
     pthread_mutex_lock(&lock);
     while(index <= 0)
-        pthread_cond_wait(&cond, &lock);
+        pthread_cond_wait(&consumerConditional, &lock);
 
     buffer_item removedItem = remove_item();
     cout << "Consumer: Removed " << removedItem << endl;
 
-    pthread_cond_signal(&cond);
+    pthread_cond_signal(&producerConditional);
     pthread_mutex_unlock(&lock);
-    
+
     int sleepTime = getSleepTime();
     cout << "Consumer: Sleeping for: " << sleepTime << endl;
     sleep(sleepTime);
