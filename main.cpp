@@ -43,12 +43,6 @@ int index = 0;
 pthread_cond_t producerConditional;
 pthread_cond_t consumerConditional;
 
-void* justPrint(void* args)
-{
-    cout << "Other thread started" << endl;
-    sleep(2);
-}
-
 int main(int argc, char** argv)
 {
     CommandLineOptions options = commandLineOptions(argc, argv);
@@ -111,8 +105,6 @@ CommandLineOptions commandLineOptions(int argc, char** argv)
     }
     return options;
 }
-
-//Use different conditionls
 
 void* producer(void* params)
 {
