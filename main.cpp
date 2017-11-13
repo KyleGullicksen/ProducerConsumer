@@ -15,6 +15,7 @@
 #include <math.h>
 
 using namespace std;
+
 #define DEFAULT_THREAD_ATTRIBUTES NULL
 #define BUFFER_SIZE 5
 #define MAX_THREADS 8
@@ -27,6 +28,7 @@ struct CommandLineOptions
     int consumerThreads = 1;
     int producerThreads = 1;
 };
+
 void* producer(void* params);
 void* consumer(void* params);
 int insert_item(buffer_item& item);
@@ -35,6 +37,7 @@ CommandLineOptions commandLineOptions(int argc, char** argv);
 void init(vector<pthread_t>& threads, int threadCount);
 int createThreads(vector<pthread_t>& threads, const pthread_attr_t* attr, void* (* start_routine)(void*), void* arg);
 int getSleepTime();
+string bufferToStr();
 
 //Globals
 buffer_item buffer[BUFFER_SIZE];
@@ -114,15 +117,15 @@ void* producer(void* params)
 
     buffer_item randomVal = random();
     insert_item(randomVal);
-    cout << "Producer: Inserting " << randomVal << endl;
+    cout << "Item " << randomVal << " inserted by a producer. The current content of the buffer is " << bufferToStr() << "." << endl;
 
     pthread_cond_signal(&consumerConditional);
     pthread_mutex_unlock(&lock);
 
     int sleepTime = getSleepTime();
-    cout << "Producer: Sleeping for: " << sleepTime << endl;
     sleep(sleepTime);
 }
+
 
 void* consumer(void* params)
 {
@@ -131,13 +134,12 @@ void* consumer(void* params)
         pthread_cond_wait(&consumerConditional, &lock);
 
     buffer_item removedItem = remove_item();
-    cout << "Consumer: Removed " << removedItem << endl;
+    cout << "Item " << removedItem << " removed by a consumer. The current content of the buffer is " << bufferToStr() << "." << endl;
 
     pthread_cond_signal(&producerConditional);
     pthread_mutex_unlock(&lock);
 
     int sleepTime = getSleepTime();
-    cout << "Consumer: Sleeping for: " << sleepTime << endl;
     sleep(sleepTime);
 }
 
@@ -163,4 +165,28 @@ buffer_item remove_item()
 
     buffer_item item = buffer[index];
     return item;
+}
+
+string bufferToStr()
+{
+    string str = "[";
+    bool isFirst = true;
+
+    for(int bufferIndex = 0; bufferIndex < index; ++bufferIndex)
+    {
+        if(!isFirst)
+        {
+            str.push_back(',');
+            str.push_back(' ');
+        }
+
+        isFirst = false;
+        str.append(std::to_string(buffer[bufferIndex]));
+    }
+    str.push_back(']');
+
+    if(str == "[]")
+        return "[empty]";
+    else
+        return str;
 }
