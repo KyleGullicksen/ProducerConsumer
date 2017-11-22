@@ -1,4 +1,13 @@
 /*
+ * Created by Kyle Gullicksen and Benjamin Siegel
+ * Date Written: 11/10/17 - 11/22/17
+ * Course: CS433
+ * Assignment #4
+ *
+ * main.cpp
+ *
+ *
+ *
  * -Solve the bounded-buffer problem (using the producer and the consumer processes in Figs 5.9 and 5.10)
  * -Use 3 semaphores: full and empty (counts of the # of full and empty slots, respectively, in the buffer)
  * -The third is a mutex (binary semaphore)
@@ -29,6 +38,7 @@ struct CommandLineOptions
     int producerThreads = 1;
 };
 
+//Glorious Functions
 void* producer(void* params);
 void* consumer(void* params);
 int insert_item(buffer_item& item);
@@ -46,6 +56,10 @@ int index = 0;
 pthread_cond_t producerConditional;
 pthread_cond_t consumerConditional;
 
+/*main
+ *Parameters(int argc, char** argv)
+ * Creates and implements the vectors, init, and threads used in the Product-Consumer problem
+ */
 int main(int argc, char** argv)
 {
     CommandLineOptions options = commandLineOptions(argc, argv);
@@ -67,6 +81,10 @@ int main(int argc, char** argv)
     exit(EXIT_SUCCESS);
 }
 
+/*initialize threadCount
+ *Parameters: vector<pthread_t>& threads, int threadCount
+ * This function takes the thread from pthread_t and pushes it onto the threads integer.
+ */
 void init(vector<pthread_t>& threads, int threadCount)
 {
     for(int count = 0; count < threadCount; ++count)
@@ -76,13 +94,18 @@ void init(vector<pthread_t>& threads, int threadCount)
     }
 }
 
+/*createThreads
+ * Parameters: vector<pthread_t>& threads, const pthread_attr_t* attr, void* (* start_routine)(void*), void* arg
+ * Creates the threads using the parameters passed into the function
+ */
 int createThreads(vector<pthread_t>& threads, const pthread_attr_t* attr, void* (* start_routine)(void*), void* arg)
 {
     for(pthread_t thread : threads)
         pthread_create(&thread, attr, start_routine, arg);
 }
 
-/*
+/*CommandLineOptions
+ *
  * 3 options:
  * 1) How long to sleep for
  * 2) The number of producer threads
@@ -109,6 +132,11 @@ CommandLineOptions commandLineOptions(int argc, char** argv)
     return options;
 }
 
+/*Producer
+ *Parameter: void* params
+ * Implementation of the producer function
+ * Produces a random item and then locks the mutux
+ */
 void* producer(void* params)
 {
     pthread_mutex_lock(&lock);
@@ -126,7 +154,13 @@ void* producer(void* params)
     sleep(sleepTime);
 }
 
-
+/*Consumer
+ * Parameter: void* params
+ * Implementation of the consumer function
+ * Removes the random item and unlocks the mutex.
+ *
+ *
+ */
 void* consumer(void* params)
 {
     pthread_mutex_lock(&lock);
@@ -143,11 +177,18 @@ void* consumer(void* params)
     sleep(sleepTime);
 }
 
+/*getSleepTime
+ * returns a random number for sleep
+ */
 int getSleepTime()
 {
     return (rand() % 10) + 1;
 }
 
+/*insert_item
+ * Parameter: buffer_item& item
+ * Inserts the item into the buffer
+ */
 int insert_item(buffer_item& item)
 {
     if(index >= BUFFER_SIZE)
@@ -156,6 +197,9 @@ int insert_item(buffer_item& item)
     ++index;
 }
 
+/*remove_item
+ *Removes the item from the buffer
+ */
 buffer_item remove_item()
 {
     if(index <= 0)
@@ -167,6 +211,11 @@ buffer_item remove_item()
     return item;
 }
 
+/*bufferToStr
+ * Converts the buffer to a string so that it can be
+ * outputted in the console.
+ *
+ */
 string bufferToStr()
 {
     string str = "[";
